@@ -1,10 +1,8 @@
 name: Docker file ci
-
 on:
   push:
     branches:
       - main
-
 jobs:
   docker-ci:
     runs-on: ubuntu-latest
@@ -12,35 +10,17 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      # 1. Generate the 4-character version name
-      - name: Set Version Name
-        id: vars
-        run: |
-          # Extract first 4 chars of the SHA
-          VERSION=$(echo ${{ github.sha }} | cut -c1-4)
-          echo "version_name=$VERSION" >> $GITHUB_OUTPUT
-
+      - name: docker build image
+        run: "docker build -t meetchhatrala789/nodeapp:v12 ./my-react-app"
+  
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.TOKEN_DOCKER }}
 
-      # 2. Build and Push using the 4-char version
-      - name: Docker build and push
-        run: |
-          VERSION=${{ steps.vars.outputs.version_name }}
-          docker build -t meetchhatrala789/nodeapp:$VERSION ./my-react-app
-          docker push meetchhatrala789/nodeapp:$VERSION
-
-      # 3. Update the YAML file for ArgoCD
-      - name: Update deployment.yaml
-        run: |
-          VERSION=${{ steps.vars.outputs.version_name }}
-          # This replaces the old image tag with the new 4-char version
-          sed -i "s|meetchhatrala789/nodeapp:.*|meetchhatrala789/nodeapp:$VERSION|g" k8s/deployment.yaml 
-
-      # 4. Push the change back to GitHub so ArgoCD sees it
+      - name: push docker image
+        run: "docker push meetchhatrala789/nodeapp:v12"
       - name: Commit and push changes
         run: |
           git config --global user.name "github-actions[bot]"
@@ -48,3 +28,5 @@ jobs:
           git add k8s/deployment.yaml
           git commit -m "deploy: update image to version ${{ steps.vars.outputs.version_name }}"
           git push origin main
+
+     
